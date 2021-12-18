@@ -1,30 +1,25 @@
 from itertools import permutations
 
 import numpy as np
-import pygad
+from pygad import cnn, gacnn, GA, load
 
 from Games.TicTacToe import TicTacToe
 from Games.TicTacToePlayer import TicTacToePlayer
 
 result_matrix = None
+GACNN_instance = None
 
 
 def play_games(ga_instance):
     global result_matrix
+    global GACNN_instance
     print("\nPlaying games to calculate new fitness values...")
     population_size = ga_instance.pop_size[0]
-    all_stars_size = min(len(ga_instance.best_solutions), population_size // 4)
-    result_matrix = np.zeros(shape=(population_size + all_stars_size, population_size + all_stars_size))
+    result_matrix = np.zeros(shape=(population_size, population_size))
     games_played = 0
-    for player1, player2 in permutations(range(population_size + all_stars_size), r=2):
-        if player1 < population_size:
-            tictactoe_player1 = TicTacToePlayer(ga_instance.population[player1], 1)
-        else:
-            tictactoe_player1 = TicTacToePlayer(ga_instance.best_solutions[population_size - player1 - 1], 1)
-        if player2 < population_size:
-            tictactoe_player2 = TicTacToePlayer(ga_instance.population[player2], -1)
-        else:
-            tictactoe_player2 = TicTacToePlayer(ga_instance.best_solutions[population_size - player2 - 1], -1)
+    for player1, player2 in permutations(range(population_size), r=2):
+        tictactoe_player1 = TicTacToePlayer(GACNN_instance.population_networks[player1], 1)
+        tictactoe_player2 = TicTacToePlayer(GACNN_instance.population_networks[player2], -1)
         tictactoe_game = TicTacToe(tictactoe_player1, tictactoe_player2)
         tictactoe_game.play_game()
         result_matrix.itemset((player1, player2), tictactoe_game.get_winner())
@@ -48,6 +43,11 @@ def fitness_func(solution, solution_idx):
 
 
 def on_generation(ga_instance):
+    global GACNN_instance
+    population_matrices = gacnn.population_as_matrices(population_networks=GACNN_instance.population_networks,
+                                                       population_vectors=ga_instance.population)
+    GACNN_instance.update_population_trained_weights(population_trained_weights=population_matrices)
+
     current_best_fitness = np.max(ga_instance.last_generation_fitness)
     prev_best_fitness = np.max(ga_instance.best_solutions_fitness)
     print("Generation {} finished\nFitness: {}\nFitness change: {}".format(ga_instance.generations_completed,
@@ -58,25 +58,47 @@ def on_generation(ga_instance):
 
 
 def main():
-    num_generations = 100
-    population_size = 50
+    input_layer = cnn.Input2D(input_shape=(3, 3))
+    conv_layer = cnn.Conv2D(num_filters=1,
+                            kernel_size=3,
+                            previous_layer=input_layer,
+                            activation_function="relu")
+    average_pooling_layer = cnn.AveragePooling2D(pool_size=5,
+                                                 previous_layer=conv_layer,
+                                                 stride=3)
+    flatten_layer = cnn.Flatten(previous_layer=average_pooling_layer)
+    dense_layer = cnn.Dense(num_neurons=9,
+                            previous_layer=flatten_layer,
+                            activation_function="softmax")
+    model = cnn.Model(last_layer=dense_layer,
+                      epochs=5,
+                      learning_rate=0.01)
+    model.summary()
+    global GACNN_instance
+    GACNN_instance = gacnn.GACNN(model=model,
+                                 num_solutions=4)
+    population_vectors = gacnn.population_as_vectors(population_networks=GACNN_instance.population_networks)
+    print(population_vectors)
+    initial_population = population_vectors.copy()
+
+    num_generations = 10
+    population_size = 8
     num_parents_mating = population_size // 2
     keep_parents = population_size // 8
     mutation_probabilities = 0.25  # (0.5, 0.02)
     num_genes = 3
-    ga_instance = pygad.GA(num_generations=num_generations,
-                           num_parents_mating=num_parents_mating,
-                           sol_per_pop=population_size,
-                           num_genes=num_genes,
-                           fitness_func=fitness_func,
-                           on_generation=on_generation,
-                           on_start=on_start,
-                           mutation_type='random',
-                           mutation_probability=mutation_probabilities,
-                           parent_selection_type="sss",
-                           keep_parents=keep_parents,
-                           save_solutions=True,
-                           save_best_solutions=True)
+    ga_instance = GA(num_generations=num_generations,
+                     num_parents_mating=num_parents_mating,
+                     initial_population=initial_population,
+                     fitness_func=fitness_func,
+                     on_generation=on_generation,
+                     on_start=on_start,
+                     mutation_type='random',
+                     mutation_probability=mutation_probabilities,
+                     parent_selection_type="sss",
+                     keep_parents=keep_parents,
+                     save_solutions=True,
+                     save_best_solutions=True)
     ga_instance.run()
 
     ga_instance.plot_fitness()
@@ -88,7 +110,7 @@ def main():
 
     filename = "genetic_solution"
     ga_instance.save(filename=filename)
-    loaded_ga_instance = pygad.load(filename="genetic_solution")
+    loaded_ga_instance = load(filename="genetic_solution")
     print(loaded_ga_instance.population)
 
 
