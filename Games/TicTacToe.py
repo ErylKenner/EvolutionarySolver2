@@ -2,15 +2,18 @@ import numpy as np
 
 
 class TicTacToe(object):
-    def __init__(self, player1, player2):
+    def __init__(self, player1, player2, print_board=False):
         self.player1 = player1
         self.player2 = player2
         self.board = np.zeros(shape=(3, 3))
         self.winner = 0
+        self.print_board = print_board
 
     def play_game(self):
         player = self.player1
         while True:
+            if self.print_board:
+                self.pretty_print_board()
             player_board = self.board_to_player_perspective(player.board_value)
             move = player.make_move(player_board)
             self.make_move(player.board_value, move)
@@ -23,6 +26,25 @@ class TicTacToe(object):
                 player = self.player2
             else:
                 player = self.player1
+
+    def pretty_print_board(self):
+        ret = "{} {} {}\n{} {} {}\n{} {} {}\n".format(self.board_value_to_symbol(self.board.item(0)),
+                                                      self.board_value_to_symbol(self.board.item(1)),
+                                                      self.board_value_to_symbol(self.board.item(2)),
+                                                      self.board_value_to_symbol(self.board.item(3)),
+                                                      self.board_value_to_symbol(self.board.item(4)),
+                                                      self.board_value_to_symbol(self.board.item(5)),
+                                                      self.board_value_to_symbol(self.board.item(6)),
+                                                      self.board_value_to_symbol(self.board.item(7)),
+                                                      self.board_value_to_symbol(self.board.item(8)))
+        print(ret)
+
+    def board_value_to_symbol(self, board_value):
+        if board_value == 1:
+            return "X"
+        elif board_value == -1:
+            return "O"
+        return "_"
 
     def get_winner(self):
         return self.winner

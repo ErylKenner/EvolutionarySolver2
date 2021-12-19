@@ -63,7 +63,7 @@ def main():
     num_parents_mating = population_size // 2
     keep_parents = population_size // 8
     mutation_probabilities = 0.25  # (0.5, 0.02)
-    num_genes = 3
+    num_genes = 9
     ga_instance = pygad.GA(num_generations=num_generations,
                            num_parents_mating=num_parents_mating,
                            sol_per_pop=population_size,
@@ -87,9 +87,21 @@ def main():
     print("Parameters of the best solution: {}\nFitness value: {}\n".format(solution, solution_fitness))
 
     filename = "genetic_solution"
-    ga_instance.save(filename=filename)
+    # ga_instance.save(filename=filename)
     loaded_ga_instance = pygad.load(filename="genetic_solution")
-    print(loaded_ga_instance.population)
+    best_solution = loaded_ga_instance.best_solution(loaded_ga_instance.last_generation_fitness)
+
+    print("Game 1. AI goes first")
+    tictactoe_player1 = TicTacToePlayer(best_solution[0], 1, player_type="conv")
+    tictactoe_player2 = TicTacToePlayer([], -1, player_type="human")
+    tictactoe_game = TicTacToe(tictactoe_player1, tictactoe_player2, print_board=True)
+    tictactoe_game.play_game()
+
+    print("Game 2. You go first")
+    tictactoe_player1 = TicTacToePlayer(best_solution[0], -1, player_type="conv")
+    tictactoe_player2 = TicTacToePlayer([], 1, player_type="human")
+    tictactoe_game = TicTacToe(tictactoe_player2, tictactoe_player1, print_board=True)
+    tictactoe_game.play_game()
 
 
 if __name__ == '__main__':
