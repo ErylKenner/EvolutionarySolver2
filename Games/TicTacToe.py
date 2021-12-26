@@ -7,11 +7,13 @@ class TicTacToe(object):
         self.player2 = player2
         self.board = np.zeros(shape=(3, 3))
         self.winner = 0
+        self.moves_taken = 0
         self.print_board = print_board
 
     def play_game(self):
         player = self.player1
         while True:
+            self.moves_taken += 1
             if self.print_board:
                 self.pretty_print_board()
             player_board = self.board_to_player_perspective(player.board_value)
@@ -47,7 +49,8 @@ class TicTacToe(object):
         return "_"
 
     def get_winner(self):
-        return self.winner
+        turns = (self.moves_taken + 1) // 2
+        return self.winner / (turns - 2)  # Takes a minimum of 5 moves to end a game
 
     def board_to_player_perspective(self, player):
         return self.board * player
